@@ -9,17 +9,11 @@ Original file is located at
 
 # pip install kagglehub[pandas-datasets]
 import pandas as pd
-import kagglehub
-from kagglehub import KaggleDatasetAdapter
 import matplotlib.pyplot as plt
 import seaborn as sns
 
 # Load the dataset (pass file name as positional arg)
-df = kagglehub.load_dataset(
-    KaggleDatasetAdapter.PANDAS,
-    "shree1992/housedata",
-    "data.csv"    # file name directly here
-)
+df = pd.read_csv("data.csv")
 
 df =  pd.DataFrame(df)
 
@@ -319,32 +313,30 @@ print(f"  RMSE (Test) : {rmse_test:.2f}")
 print(f"  R2 Score (Train): {r2_train:.4f}")
 print(f"  R2 Score (Test) : {r2_test:.4f}")
 
+model_columns = x_train.columns
 
 
-pip install openai streamlit
 
-import streamlit as st
-from openai import OpenAI
+#pip install openai streamlit
+
 import os
+from openai import OpenAI
 
-client = OpenAI(
-    base_url="https://api.groq.com/openai/v1"
-)
 
-def get_llm_explanation(price, category, bedrooms, bathrooms, sqft, waterfront, grade):
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+def get_llm_explanation(price, category, bedrooms, bathrooms, sqft_living, waterfront):
     prompt = f"""
     A house price prediction system produced the following results:
 
-    Predicted Price: {price} USD
-    Category: {category} (High or Low price)
+    Predicted Price: {price:.2f} USD
+    Category: {category}
 
     Features:
     Bedrooms: {bedrooms}
     Bathrooms: {bathrooms}
-    Living Area: {sqft} sqft
+    Living Area: {sqft_living} sqft
     Waterfront: {waterfront}
-    Grade: {grade}
 
     Explain professionally:
     1. Why this house received this price prediction.
@@ -353,9 +345,95 @@ def get_llm_explanation(price, category, bedrooms, bathrooms, sqft, waterfront, 
     """
 
     response = client.chat.completions.create(
-        model="llama3-70b-8192",
+        model="gpt-4",  # أو gpt-3.5-turbo حسب حسابك
         messages=[{"role": "user", "content": prompt}],
         temperature=0.3
     )
 
     return response.choices[0].message.content
+    # ------------------------------
+# Streamlit App
+# ------------------------------
+import streamlit as st
+
+st.title("🏡 House Price Prediction & Explanation")
+st.write("Predict house price and get a professional explanation using LLM.")
+
+# Sidebar Inputs
+st.sidebar.header("House Features")
+
+bedrooms = st.sidebar.number_input("Bedrooms", 1, 20, 3)
+bathrooms = st.sidebar.number_input("Bathrooms", 1, 10, 2)
+sqft_living = st.sidebar.number_input("Living Area (sqft)", 100, 20000, 1500)
+sqft_lot = st.sidebar.number_input("Lot Area (sqft)", 500, 100000, 5000)
+floors = st.sidebar.number_input("Floors", 1, 5, 1)
+
+waterfront = st.sidebar.selectbox("Waterfront", [0, 1])
+view = st.sidebar.slider("View (0-4)", 0, 4, 0)
+condition = st.sidebar.slider("Condition (1-5)", 1, 5, 3)
+
+sqft_above = st.sidebar.number_input("Sqft Above Ground", 100, 20000, 1200)
+sqft_basement = st.sidebar.number_input("Sqft Basement", 0, 10000, 300)
+
+yr_built = st.sidebar.number_input("Year Built", 1900, 2026, 2000)
+yr_renovated = st.sidebar.number_input("Year Renovated (0 if none)", 0, 2026, 0)
+
+year = st.sidebar.number_input("Sale Year", 2000, 2026, 2014)
+month = st.sidebar.slider("Sale Month", 1, 12, 6)
+day = st.sidebar.slider("Sale Day", 1, 31, 15)
+# Simple category based on grade
+# Create input dataframe
+input_features = pd.DataFrame({
+    'bedrooms':[bedrooms],
+    'bathrooms':[bathrooms],
+    'sqft_living':[sqft_living],
+    'sqft_lot':[sqft_lot],
+    'floors':[floors],
+    'waterfront':[waterfront],
+    'view':[view],
+    'condition':[condition],
+    'sqft_above':[sqft_above],
+    'sqft_basement':[sqft_basement],
+    'yr_built':[yr_built],
+    'yr_renovated':[yr_renovated],
+    'year':[year],
+    'month':[month],
+    'day':[day]
+})
+
+# أضف الأعمدة الناقصة (dummy columns)
+for col in model_columns:
+    if col not in input_features.columns:
+        input_features[col] = 0
+
+# نفس ترتيب الأعمدة
+input_features = input_features[model_columns]
+
+# Scaling
+input_features[num_cols] = scaler.transform(input_features[num_cols])
+
+# Prediction
+pred_price = float(xgb_model.predict(input_features)[0])
+
+# Category based on predicted price
+category = "High" if pred_price > 500000 else "Low"
+
+# Handle missing dummy columns (if needed)
+
+
+
+st.subheader(f"Predicted Price: ${pred_price:,.2f}")
+st.write(f"Category: **{category} Price**")
+
+# Button to get LLM explanation
+if st.button("Get LLM Explanation"):
+    explanation = get_llm_explanation(
+    pred_price,
+    category,
+    bedrooms,
+    bathrooms,
+    sqft_living,
+    waterfront
+)
+    st.markdown("### 💡 Explanation")
+    st.write(explanation)
