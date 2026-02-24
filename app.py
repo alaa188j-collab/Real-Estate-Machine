@@ -326,7 +326,7 @@ from openai import OpenAI
 import streamlit as st
 from groq import Groq
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
 
 def get_llm_explanation(price, category, bedrooms, bathrooms, sqft, waterfront, grade):
 
