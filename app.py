@@ -321,22 +321,27 @@ model_columns = x_train.columns
 
 import os
 from openai import OpenAI
+#pip install groq
 
+import streamlit as st
+from groq import Groq
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-def get_llm_explanation(price, category, bedrooms, bathrooms, sqft_living, waterfront):
+def get_llm_explanation(price, category, bedrooms, bathrooms, sqft, waterfront, grade):
+
     prompt = f"""
     A house price prediction system produced the following results:
 
-    Predicted Price: {price:.2f} USD
-    Category: {category}
+    Predicted Price: {price} USD
+    Category: {category} (High or Low price)
 
     Features:
     Bedrooms: {bedrooms}
     Bathrooms: {bathrooms}
-    Living Area: {sqft_living} sqft
+    Living Area: {sqft} sqft
     Waterfront: {waterfront}
+    Grade: {grade}
 
     Explain professionally:
     1. Why this house received this price prediction.
@@ -345,8 +350,11 @@ def get_llm_explanation(price, category, bedrooms, bathrooms, sqft_living, water
     """
 
     response = client.chat.completions.create(
-        model="gpt-4",  # أو gpt-3.5-turbo حسب حسابك
-        messages=[{"role": "user", "content": prompt}],
+        model="llama3-70b-8192",
+        messages=[
+            {"role": "system", "content": "You are a real estate analyst."},
+            {"role": "user", "content": prompt}
+        ],
         temperature=0.3
     )
 
